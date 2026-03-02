@@ -18,6 +18,106 @@
 ┌─────────────────────────┐
 │ 5. Save & Commit        │  → /scwm/if_pack_bas~save
 └─────────────────────────┘
+HU Creation Part in the Function Module
+The HU creation happens inside the FORM pack_item_to_delivery:
+
+1. Check if HU Exists
+
+" Check if HU already exists
+CALL METHOD lo_pack->get_hu
+  EXPORTING
+    iv_huident = cs_rehu_hu-huident
+    iv_lock    = abap_true
+  IMPORTING
+    es_huhdr   = ls_huhdr_exist
+  EXCEPTIONS
+    not_found  = 1
+    OTHERS     = 2.
+
+IF sy-subrc = 0.
+  lf_hu_exist = abap_true.
+ENDIF.
+
+2. Create HU (if not exists)
+DO lv_no_hu TIMES.
+
+  IF lf_hu_exist = abap_true.
+    " Use existing HU
+    ls_huhdr = ls_huhdr_exist.
+  ELSE.
+    " Create new HU
+    CALL METHOD lo_pack->/scwm/if_pack_bas~create_hu
+      EXPORTING
+        iv_pmat      = iv_hu_matid
+        iv_huident   = lv_huident
+        is_hu_create = ls_hu_create
+      RECEIVING
+        es_huhdr     = ls_huhdr
+      EXCEPTIONS
+        error        = 1
+        OTHERS       = 2.
+
+    IF sy-subrc <> 0.
+      MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+        WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    ENDIF.
+  ENDIF.
+
+3. Pack Stock into HU
+  ls_material-qdoccat = cs_rehu_hu-rdoccat.
+  ls_material-qdocid  = cs_rehu_hu-docid.
+  ls_material-qitmid  = cs_rehu_hu-ritmid.
+  ls_quantity-quan    = cs_rehu_prod-nista.
+  ls_quantity-unit    = cs_rehu_prod-altme.
+
+  CALL METHOD lo_pack->/scwm/if_pack_bas~pack_stock
+    EXPORTING
+      iv_dest_hu  = ls_huhdr-guid_hu
+      is_material = ls_material
+      is_quantity = ls_quantity
+    EXCEPTIONS
+      error       = 1
+      OTHERS      = 2.
+
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+      WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+
+4. Update BBD (Best Before Date)
+  IF cs_rehu_prod-bbdat IS NOT INITIAL.
+    
+    CALL METHOD lo_pack->/scwm/if_pack_bas~get_hu_item
+      EXPORTING
+        iv_guid_hu = ls_huhdr-guid_hu
+      IMPORTING
+        et_huitm   = lt_huitm.
+
+    READ TABLE lt_huitm INTO ls_huitm INDEX 1.
+    ls_huitm-vfdat = cs_rehu_prod-bbdat.
+
+    CALL METHOD lo_pack->/scwm/if_pack_bas~change_huitm
+      EXPORTING
+        is_huitm = ls_huitm
+      IMPORTING
+        es_huitm = ls_huitm_out.
+  ENDIF.
+
+ENDDO.
+
+
+5. Save HU
+CALL METHOD lo_pack->/scwm/if_pack_bas~save
+  EXPORTING
+    iv_commit = ' '
+    iv_wait   = ' '
+  EXCEPTIONS
+    error     = 1
+    OTHERS    = 2.
+
+COMMIT WORK AND WAIT.
+
 
 
 FUNCTION zewm_pack_hu_inbound_dlv.
