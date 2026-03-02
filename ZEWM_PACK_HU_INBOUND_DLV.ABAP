@@ -1,3 +1,25 @@
+
+┌─────────────────────────┐
+│ 1. Check HU exists      │
+└───────────┬─────────────┘
+            ↓
+┌─────────────────────────┐
+│ 2. Create HU (if new)   │  → /scwm/if_pack_bas~create_hu
+└───────────┬─────────────┘
+            ↓
+┌─────────────────────────┐
+│ 3. Pack stock into HU   │  → /scwm/if_pack_bas~pack_stock
+└───────────┬─────────────┘
+            ↓
+┌─────────────────────────┐
+│ 4. Update BBD (optional)│  → /scwm/if_pack_bas~change_huitm
+└───────────┬─────────────┘
+            ↓
+┌─────────────────────────┐
+│ 5. Save & Commit        │  → /scwm/if_pack_bas~save
+└─────────────────────────┘
+
+
 FUNCTION zewm_pack_hu_inbound_dlv.
 *"----------------------------------------------------------------------
 *"*"Interfaccia locale:
