@@ -1,0 +1,66 @@
+ FUNCTION z_rf_emduri_step06_pai.
+*"----------------------------------------------------------------------
+*"*"Interfaccia locale:
+*"  EXPORTING
+*"     REFERENCE(EV_NEXT_STEP) TYPE  /SCWM/DE_STEP
+*"     REFERENCE(ES_MSG) TYPE  BAPIRET2
+*"  CHANGING
+*"     REFERENCE(ZSRF_EMDURI) TYPE  ZSRF_EMDURI OPTIONAL
+*"     REFERENCE(GT_INBOUND_LIST) TYPE  ZSRF_TT_EMDURI_SCR3 OPTIONAL
+*"     REFERENCE(GT_SUPPLIER_LIST) TYPE  ZSRF_TT_EMDURI_SCR2 OPTIONAL
+*"     REFERENCE(GT_PRODUCT_LIST) TYPE  ZSRF_TT_EMDURI_SCR4 OPTIONAL
+*"     REFERENCE(GT_BARCODE_LIST) TYPE  ZSRF_TT_EMDURI_SCR5 OPTIONAL
+*"----------------------------------------------------------------------
+
+   PERFORM get_pack_material.
+
+ ENDFUNCTION.
+
+
+ -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_pack_material .
+  DATA: ls_content_query TYPE /scwm/s_ps_content_query,
+        lt_ps_keys       TYPE /scwm/tt_ps_header_key,
+        lt_object        TYPE /scwm/tt_ps_object,
+        lv_severity	     TYPE	bapi_mtype,
+        lt_return	       TYPE	bapirettab.
+
+  APPEND VALUE #( matid = gt_items[ 1 ]-product-productid ) TO ls_content_query-matid.
+
+  CALL FUNCTION '/SCWM/API_PACKSPEC_GETLIST'
+    EXPORTING
+      is_content_query = ls_content_query
+*     IT_PSID_RNG      =
+*     IT_PSGROUP_RNG   =
+*     IT_CREATED_ON_RNG       =
+*     IT_CREATED_BY_RNG       =
+*     IT_CHANGED_ON_RNG       =
+*     IT_CHANGED_BY_RNG       =
+*     IT_ACT_BY_RNG    =
+*     IT_ACT_ON_RNG    =
+*     IT_STATUS_RNG    =
+*     IV_LOGSYS        =
+    IMPORTING
+      et_ps_keys       = lt_ps_keys
+      ev_severity      = lv_severity
+      et_return        = lt_return
+* CHANGING
+*     CV_MAX_ROWS      =
+    .
+
+  CALL FUNCTION '/SCWM/API_PACKSPEC_READ'
+    EXPORTING
+*     IS_FLAGS    =
+      it_ps_id    = lt_ps_keys
+    IMPORTING
+      et_object   = lt_object
+      ev_severity = lv_severity
+      et_return   = lt_return.
+  IF sy-subrc = 0.
+    gs_scr7-ps_id = lt_object[ 1 ]-levels[ 1 ]-hu_mat.
+  ENDIF.
+
+ENDFORM.
+*&------------------------------------------------------
