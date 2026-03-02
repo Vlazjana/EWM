@@ -1,6 +1,14 @@
 Z_RF_EMDURI_STEP01_PAI
 
+FUNCTION z_rf_emduri_step01_pbo.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  CHANGING
+*"     REFERENCE(ZSRF_EMDURI) TYPE  ZSRF_EMDURI OPTIONAL
+*"----------------------------------------------------------------------
+CLEAR ZSRF_EMDURI.
 
+ENDFUNCTION.
 FUNCTION z_rf_emduri_step01_pai.
 *"----------------------------------------------------------------------
 *"*"Local Interface:
