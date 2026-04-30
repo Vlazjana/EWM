@@ -1,61 +1,33 @@
-FUNCTION z_ewmrf_pick_pibsys_initial.
-*"----------------------------------------------------------------------
-*"*"Local Interface:
-*"  CHANGING
-*"     REFERENCE(RESOURCE) TYPE  /SCWM/S_RSRC
-*"     REFERENCE(ORDIM_CONFIRM) TYPE  /SCWM/S_RF_ORDIM_CONFIRM
-*"     REFERENCE(WHO) TYPE  /SCWM/S_WHO_INT
-*"     REFERENCE(T_RF_PICK_HUS) TYPE  /SCWM/TT_RF_PICK_HUS
-*"     REFERENCE(TT_ORDIM_CONFIRM) TYPE  /SCWM/TT_RF_ORDIM_CONFIRM
-*"     REFERENCE(WME_VERIF) TYPE  /SCWM/S_WME_VERIF
-*"     REFERENCE(ZT_WHO_LIST) TYPE  /SCWM/TT_WHO_INT OPTIONAL
-*"     REFERENCE(ZT_WHO_DISPLAY) TYPE  ZTT_RF_WHO_LIST OPTIONAL
-*"     REFERENCE(ZS_WHO_DISPLAY) TYPE  ZSRF_WHO_LIST OPTIONAL
-*"----------------------------------------------------------------------
+FUNCTION Z_EWMRF_PICK_PIBSYS_INITIAL.
+**"----------------------------------------------------------------------
+**"*"Local Interface:
+**"  CHANGING
+**"     REFERENCE(RESOURCE) TYPE  /SCWM/S_RSRC
+**"     REFERENCE(ORDIM_CONFIRM) TYPE  /SCWM/S_RF_ORDIM_CONFIRM
+**"     REFERENCE(WHO) TYPE  /SCWM/S_WHO_INT
+**"     REFERENCE(T_RF_PICK_HUS) TYPE  /SCWM/TT_RF_PICK_HUS
+**"     REFERENCE(TT_ORDIM_CONFIRM) TYPE  /SCWM/TT_RF_ORDIM_CONFIRM
+**"     REFERENCE(WME_VERIF) TYPE  /SCWM/S_WME_VERIF
+**"     REFERENCE(ZT_WHO_LIST) TYPE  /SCWM/TT_WHO_INT OPTIONAL
+**"     REFERENCE(ZT_WHO_DISPLAY) TYPE  ZTT_RF_WHO_LIST OPTIONAL
+**"     REFERENCE(ZS_WHO_DISPLAY) TYPE  ZSRF_WHO_LIST OPTIONAL
+**"----------------------------------------------------------------------
+** need to check data and to define next step according to customizing
+** Currently goes to introduce HU screen.
 
-  DATA: lv_state         TYPE /scwm/de_state,
-        lv_fcode         TYPE /scwm/de_fcode,
-        ls_wo_rsrc_ty    TYPE /scwm/wo_rsrc_ty,
-        ls_trsrc_typ     TYPE /scwm/trsrc_typ,
-        ls_who           TYPE /scwm/s_who_int,
-        ls_whohu         TYPE /scwm/s_whohu,
-        ls_rf_pick_hus   TYPE /scwm/s_rf_pick_hus,
-        ls_ordim_o       TYPE /scwm/ordim_o,
-        lt_wo_rsrc_ty    TYPE /scwm/tt_wo_rsrc_ty,
-        lt_whohu         TYPE /scwm/tt_whohu_int,
-        lt_ordim_o       TYPE /scwm/tt_ordim_o,
-        ls_resource      TYPE /scwm/rsrc,
-        lv_whoseq        TYPE /scwm/de_whoseq,
-        ls_ordim_confirm TYPE /scwm/s_rf_ordim_confirm,
-        ls_rsrc          TYPE /scwm/rsrc,
-        lv_success       TYPE sysubrc,
-        lv_last_tx       TYPE /scwm/de_ltrans,
-        lv_lgpla         TYPE /scwm/de_rf_vlpla,
-        lt_who           TYPE /scwm/tt_who_int,
-        lt_filter_who    TYPE /scwm/tt_who_int,
-        lv_queue         TYPE /scwm/de_queue.
-
-  DATA lt_wo_rsrc_ty_new  TYPE /scwm/tt_wo_rsrc_ty.
-  DATA additional_txt     TYPE string.
-
-* Custom: WHO list navigation
-  DATA: ls_who_nav     TYPE /scwm/s_who_int,
-        lt_wo_rsrc_nav TYPE /scwm/tt_wo_rsrc_ty,
-        lv_success_nav TYPE sysubrc.
+  DATA: ls_trsrc_typ   TYPE /scwm/trsrc_typ,
+        ls_resource    TYPE /scwm/rsrc,
+        ls_rsrc        TYPE /scwm/rsrc,
+        lv_last_tx     TYPE /scwm/de_ltrans,
+        lv_queue       TYPE /scwm/de_queue,
+        additional_txt TYPE string.
 
   BREAK-POINT ID /scwm/rf_picking.
 
-  CLEAR zt_who_list.
-  gv_who_index = 1.
-
-* initiating data
-  CLEAR: ls_wo_rsrc_ty, ordim_confirm, ls_rf_pick_hus,
-         ls_ordim_o, ls_whohu.
-  REFRESH: lt_wo_rsrc_ty, tt_ordim_confirm, t_rf_pick_hus.
-
+  CLEAR: ordim_confirm, zt_who_list, zt_who_display.
+  REFRESH: tt_ordim_confirm, t_rf_pick_hus.
   gv_pick_sort = gc_sort_ascending.
 
-*   Get resource ID.
   MOVE-CORRESPONDING resource TO ls_resource.
   CALL FUNCTION '/SCWM/RSRC_RESOURCE_MEMORY'
     EXPORTING
@@ -63,10 +35,9 @@ FUNCTION z_ewmrf_pick_pibsys_initial.
     CHANGING
       cs_rsrc  = ls_resource.
 
-* save the queue
   lv_last_tx = /scwm/cl_rf_bll_srvc=>get_last_ltrans( ).
   IF lv_last_tx = ltrans_work_by_queue.
-    GET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD lv_queue.
+    GET PARAMETER ID '/SCWM/WKSYSQ_QUEUE' FIELD lv_queue.
   ENDIF.
 
   CALL FUNCTION '/SCWM/RSRC_READ_SINGLE'
@@ -80,7 +51,7 @@ FUNCTION z_ewmrf_pick_pibsys_initial.
       not_found   = 2
       OTHERS      = 3.
   IF sy-subrc <> 0.
-    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
+    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE' FIELD space.
     MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
             WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
   ENDIF.
@@ -98,259 +69,64 @@ FUNCTION z_ewmrf_pick_pibsys_initial.
       not_found    = 1
       OTHERS       = 2.
   IF sy-subrc <> 0.
-    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
+    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE' FIELD space.
     MESSAGE e036 WITH resource-rsrc.
   ELSE.
     gv_postn_mngmnt = ls_trsrc_typ-postn_mngmnt.
   ENDIF.
 
-  MOVE-CORRESPONDING ls_rsrc TO resource.
-  CALL METHOD /scwm/cl_tm=>set_lgnum( ls_resource-lgnum ).
+  PERFORM collect_who_nav_list
+    USING    ls_resource
+             ls_rsrc
+             lv_last_tx
+             lv_queue
+    CHANGING zt_who_list
+             zt_who_display
+             additional_txt.
 
-  CALL FUNCTION '/SCWM/RSRC_TRSRC_TYP_READ'
-    EXPORTING
-      iv_lgnum     = resource-lgnum
-      iv_rsrc_type = resource-rsrc_type
-    IMPORTING
-      es_trsrc_typ = ls_trsrc_typ
-    EXCEPTIONS
-      not_found    = 1
-      OTHERS       = 2.
-  IF sy-subrc <> 0.
-    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
-    MESSAGE e036 WITH resource-rsrc.
-  ELSE.
-    gv_postn_mngmnt = ls_trsrc_typ-postn_mngmnt.
+  IF zt_who_list IS INITIAL.
+    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE' FIELD space.
+    /scwm/cl_rf_bll_srvc=>message(
+      EXPORTING
+        iv_flg_continue_flow = 'X'
+        iv_msgid             = '/SCWM/RF_EN'
+        iv_msgno             = '056' ).
+    /scwm/cl_rf_bll_srvc=>set_fcode( /scwm/cl_rf_bll_srvc=>c_fcode_leave ).
+    /scwm/cl_rf_bll_srvc=>set_prmod(
+      EXPORTING
+        iv_prmod    = /scwm/cl_rf_bll_srvc=>c_prmod_background
+        iv_ovr_cust = 'X' ).
+    RETURN.
   ENDIF.
 
-* Main loop — find valid WHO
-  CLEAR lt_filter_who.
-  CLEAR additional_txt.
-  DO 10 TIMES.
-    CLEAR: tt_ordim_confirm,
-           t_rf_pick_hus,
-           ordim_confirm,
-           lt_wo_rsrc_ty.
+  READ TABLE zt_who_list INDEX 1 INTO who.
 
-    IF lv_last_tx = ltrans_work_by_queue AND
-       lt_filter_who IS NOT INITIAL.
-      ls_wo_rsrc_ty-lgnum = ls_resource-lgnum.
-      ls_wo_rsrc_ty-queue = lv_queue.
-      APPEND ls_wo_rsrc_ty TO lt_wo_rsrc_ty.
-    ENDIF.
+  PERFORM find_first_workable_who
+    USING    resource
+             ls_rsrc
+             lv_last_tx
+             lv_queue
+             zt_who_list
+    CHANGING resource
+             who
+             ordim_confirm
+             tt_ordim_confirm
+             t_rf_pick_hus
+             additional_txt.
 
-    /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'PISYSG' ).
-    CALL FUNCTION '/SCWM/RF_WHO_SELECT'
-      EXPORTING
-        iv_recfilt_mode  = 'X'
-        it_filter_who    = lt_filter_who
-      CHANGING
-        resource         = resource
-        ordim_confirm    = ordim_confirm
-        who              = who
-        t_rf_pick_hus    = t_rf_pick_hus
-        tt_ordim_confirm = tt_ordim_confirm
-        ct_wo_rsrc_ty    = lt_wo_rsrc_ty
-        success          = lv_success.
-    /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'ZPSYSG' ).
-
-    IF lv_success IS NOT INITIAL.
-      DATA(mo_skip_wo) = /scwm/cl_rf_pick_exc_skip_wo=>get_instance(
-                           iv_lgnum = resource-lgnum ).
-      IF mo_skip_wo->get_all_wos_skipped( ) = abap_true.
-        /scwm/cl_rf_bll_srvc=>message(
-          EXPORTING
-            iv_flg_continue_flow = 'X'
-            iv_msgid             = '/SCWM/RF_EN'
-            iv_msgno             = '056' ).
-        /scwm/cl_rf_bll_srvc=>set_fcode(
-          /scwm/cl_rf_bll_srvc=>c_fcode_leave ).
-        /scwm/cl_rf_bll_srvc=>set_prmod(
-          EXPORTING
-            iv_prmod    = /scwm/cl_rf_bll_srvc=>c_prmod_background
-            iv_ovr_cust = 'X' ).
-        RETURN.
-      ENDIF.
-      SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
-      MESSAGE e056.
-    ENDIF.
-
-    IF lv_last_tx = ltrans_work_by_queue OR
-       lv_last_tx = ltrans_work_by_system.
-      CALL FUNCTION '/SCWM/RSRC_READ_SINGLE'
-        EXPORTING
-          iv_lgnum    = ls_resource-lgnum
-          iv_rsrc     = ls_resource-rsrc
-        IMPORTING
-          es_rsrc     = ls_rsrc
-        EXCEPTIONS
-          wrong_input = 1
-          not_found   = 2
-          OTHERS      = 3.
-      IF sy-subrc <> 0.
-        SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
-        MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
-                WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
-      ENDIF.
-      ls_rsrc-ltrans = lv_last_tx.
-      CALL FUNCTION '/SCWM/RSRC_RESOURCE_SET'
-        EXPORTING
-          iv_action = wmegc_update
-          is_rsrc   = ls_rsrc.
-    ENDIF.
-
-    IF resource-semi_lgpla IS NOT INITIAL.
-      /scwm/cl_rf_bll_srvc=>set_fcode( 'GTSEMI' ).
-      CLEAR: ordim_confirm, tt_ordim_confirm.
-      RETURN.
-    ENDIF.
-
-    /scwm/cl_rf_bll_srvc=>set_prmod('1').
-
-    /scwm/cl_rf_confirm_picking=>get_instance( )->init_async_processing(
-      CHANGING
-        ct_ordim_confirm = tt_ordim_confirm ).
-
-    READ TABLE tt_ordim_confirm INDEX 1 INTO ordim_confirm.
-
-    IF NOT ordim_confirm IS INITIAL.
-      CLEAR lv_whoseq.
-      LOOP AT tt_ordim_confirm INTO ls_ordim_confirm
-        WHERE srsrc IS INITIAL.
-        IF ls_ordim_confirm-whoseq > lv_whoseq.
-          lv_whoseq = ls_ordim_confirm-whoseq.
-        ENDIF.
-      ENDLOOP.
-      IF lv_whoseq > 0.
-        DELETE tt_ordim_confirm
-          WHERE lgnum = ordim_confirm-lgnum AND
-                srsrc IS NOT INITIAL AND
-                whoseq > lv_whoseq.
-      ENDIF.
-    ENDIF.
-
-    READ TABLE tt_ordim_confirm INDEX 1 INTO ordim_confirm.
-
-    DATA lv_wtnum_before_blkchk TYPE sy-tabix.
-    DESCRIBE TABLE tt_ordim_confirm LINES lv_wtnum_before_blkchk.
-
-    CALL FUNCTION '/SCWM/RF_PICK_SRCBIN_BLOCK_CHK'
-      EXPORTING
-        iv_rsrc          = ls_rsrc-rsrc
-      IMPORTING
-        et_wo_rsrc_ty    = lt_wo_rsrc_ty_new
-      CHANGING
-        ct_ordim_confirm = tt_ordim_confirm
-        cv_lgpla         = lv_lgpla.
-
-    IF lines( tt_ordim_confirm ) IS INITIAL.
-      IF lv_last_tx = ltrans_work_by_wo OR
-         lv_last_tx = ltrans_work_by_hu.
-        MESSAGE e263(/scwm/rf_de) WITH lv_lgpla.
-      ENDIF.
-      SET PARAMETER ID '/SCWM/WORK_WHO' FIELD space.
-      additional_txt = 'Blocked bin(s) exist(s)'.
-      APPEND who TO lt_filter_who.
-      CONTINUE.
-    ENDIF.
-
-    IF lines( lt_wo_rsrc_ty_new ) IS NOT INITIAL.
-      PERFORM wo_rsrc_ty_update
-        USING lt_wo_rsrc_ty
-        CHANGING lt_wo_rsrc_ty_new.
-      CLEAR lt_wo_rsrc_ty.
-      INSERT LINES OF lt_wo_rsrc_ty_new INTO TABLE lt_wo_rsrc_ty.
-      CLEAR lt_wo_rsrc_ty_new.
-    ELSE.
-      IF lines( tt_ordim_confirm ) IS NOT INITIAL.
-        EXIT. "loop
-      ELSEIF ( lv_wtnum_before_blkchk = 1 ).
-        EXIT.
-      ENDIF.
-    ENDIF.
-  ENDDO.
-
-* ═══════════════════════════════════════════════
-* Custom: Build WHO list for PGUP/PGDN navigation
-* ═══════════════════════════════════════════════
- CLEAR zt_who_list.
-  gv_who_index = 1.
-
-  DATA: lt_filter_nav  TYPE /scwm/tt_who_int,
-        ls_who_filter  TYPE /scwm/s_who_int.
-
-* WHO e parë — tashmë e kemi
-  MOVE-CORRESPONDING who TO ls_who_nav.
-  APPEND ls_who_nav TO zt_who_list.
-
-* Shto WHO-n e parë në filter
-  APPEND ls_who_nav TO lt_filter_nav.
-
-* Merr të tjerat duke skip-uar ato që i kemi
-  DO.
-    CLEAR: lt_wo_rsrc_nav, ordim_confirm,
-           tt_ordim_confirm, t_rf_pick_hus.
-
-    /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'PISYSG' ).
-    CALL FUNCTION '/SCWM/RF_WHO_SELECT'
-      EXPORTING
-        iv_recfilt_mode  = 'X'
-        it_filter_who    = lt_filter_nav  "← skip ato që i kemi
-      CHANGING
-        resource         = resource
-        ordim_confirm    = ordim_confirm
-        who              = who
-        t_rf_pick_hus    = t_rf_pick_hus
-        tt_ordim_confirm = tt_ordim_confirm
-        ct_wo_rsrc_ty    = lt_wo_rsrc_nav
-        success          = lv_success_nav.
-    /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'ZPSYSG' ).
-
-*   Nuk ka më WHO
-    IF lv_success_nav IS NOT INITIAL.
-      EXIT.
-    ENDIF.
-
-*   Shto në listë dhe në filter
-    MOVE-CORRESPONDING who TO ls_who_nav.
-    APPEND ls_who_nav TO zt_who_list.
-    APPEND ls_who_nav TO lt_filter_nav.
-  ENDDO.
-
-* Kthe WHO-n e parë dhe rilexo WT-të e saj
-  READ TABLE zt_who_list INDEX 1 INTO ls_who_nav.
-  MOVE-CORRESPONDING ls_who_nav TO who.
-
-  CLEAR: tt_ordim_confirm, t_rf_pick_hus,
-         ordim_confirm, lt_wo_rsrc_nav.
-
-  /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'PISYSG' ).
-  CALL FUNCTION '/SCWM/RF_WHO_SELECT'
-    EXPORTING
-      iv_recfilt_mode  = 'X'
-    CHANGING
-      resource         = resource
-      ordim_confirm    = ordim_confirm
-      who              = who
-      t_rf_pick_hus    = t_rf_pick_hus
-      tt_ordim_confirm = tt_ordim_confirm
-      ct_wo_rsrc_ty    = lt_wo_rsrc_nav
-      success          = lv_success_nav.
-  /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'ZPSYSG' ).
-
-  READ TABLE tt_ordim_confirm INDEX 1 INTO ordim_confirm.
-
-* ═══════════════════════════════════════════════
-
-  IF tt_ordim_confirm IS NOT INITIAL.
-    COMMIT WORK AND WAIT.
-    CALL METHOD /scwm/cl_tm=>cleanup( ).
+  IF /scwm/cl_rf_bll_srvc=>get_fcode( ) = /scwm/cl_rf_bll_srvc=>c_fcode_leave.
+    RETURN.
   ENDIF.
 
-  IF lines( tt_ordim_confirm ) IS INITIAL.
-    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
+  IF tt_ordim_confirm IS INITIAL.
+    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE' FIELD space.
     MESSAGE e769 WITH additional_txt.
   ENDIF.
+  gt_who_list_gv = zt_who_list.
+  gv_who_active  = who-who.
+  gv_who_lgnum   = who-lgnum.
+  COMMIT WORK AND WAIT.
+  CALL METHOD /scwm/cl_tm=>cleanup( ).
 
   CALL FUNCTION '/SCWM/RF_FILL_WME_VERIF'
     EXPORTING
@@ -373,391 +149,238 @@ FUNCTION z_ewmrf_pick_pibsys_initial.
       ordim_confirm    = ordim_confirm
       tt_ordim_confirm = tt_ordim_confirm.
 
-*  CALL METHOD /scwm/cl_rf_bll_srvc=>set_scr_tabname
-*    EXPORTING
-*      iv_scr_tabname = 'ZTT_RF_WHO_LIST'.
-*
-*  CALL METHOD /scwm/cl_rf_bll_srvc=>set_line
-*    EXPORTING
-*      iv_line = 1.
-
-  CLEAR zt_who_display.
-  LOOP AT zt_who_list ASSIGNING FIELD-SYMBOL(<ls_wn>).
-    APPEND INITIAL LINE TO zt_who_display
-      ASSIGNING FIELD-SYMBOL(<ls_d>).
-    <ls_d>-who   = <ls_wn>-who.
-    <ls_d>-lgnum = <ls_wn>-lgnum.
-  ENDLOOP.
-
-    CALL METHOD /scwm/cl_rf_bll_srvc=>set_scr_tabname
-    EXPORTING
-      iv_scr_tabname = 'ZTT_RF_WHO_LIST'.
-
-  CALL METHOD /scwm/cl_rf_bll_srvc=>set_line
-    EXPORTING
-      iv_line = 1.
-
 ENDFUNCTION.
 
 
 
 
 
+FORM collect_who_nav_list
+  USING    is_resource  TYPE /scwm/rsrc
+           is_rsrc      TYPE /scwm/rsrc
+           iv_last_tx   TYPE /scwm/de_ltrans
+           iv_queue     TYPE /scwm/de_queue
+  CHANGING ct_who_list    TYPE /scwm/tt_who_int
+           ct_who_display TYPE ztt_rf_who_list
+           cv_additional  TYPE string.
+
+  DATA: lt_filter_who TYPE /scwm/tt_who_int,
+        lt_wo_rsrc_ty TYPE /scwm/tt_wo_rsrc_ty,
+        ls_wo_rsrc_ty TYPE /scwm/wo_rsrc_ty,
+        ls_resource_l TYPE /scwm/s_rsrc,
+        ls_ordim_l    TYPE /scwm/s_rf_ordim_confirm,
+        lt_ordim_l    TYPE /scwm/tt_rf_ordim_confirm,
+        lt_hus_l      TYPE /scwm/tt_rf_pick_hus,
+        ls_who_l      TYPE /scwm/s_who_int,
+        ls_display    TYPE zsrf_who_list,
+        lv_success    TYPE sysubrc.
+
+  MOVE-CORRESPONDING is_resource TO ls_resource_l.
+
+  DO.
+    CLEAR: ls_who_l, ls_ordim_l, lt_ordim_l,
+           lt_hus_l, lt_wo_rsrc_ty, lv_success.
+
+    IF iv_last_tx = ltrans_work_by_queue AND
+       lt_filter_who IS NOT INITIAL.
+      ls_wo_rsrc_ty-lgnum = is_resource-lgnum.
+      ls_wo_rsrc_ty-queue = iv_queue.
+      APPEND ls_wo_rsrc_ty TO lt_wo_rsrc_ty.
+    ENDIF.
+
+    /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'PISYSG' ).
+    CALL FUNCTION '/SCWM/RF_WHO_SELECT'
+      EXPORTING
+        iv_recfilt_mode  = 'X'
+        it_filter_who    = lt_filter_who
+      CHANGING
+        resource         = ls_resource_l
+        ordim_confirm    = ls_ordim_l
+        who              = ls_who_l
+        t_rf_pick_hus    = lt_hus_l
+        tt_ordim_confirm = lt_ordim_l
+        ct_wo_rsrc_ty    = lt_wo_rsrc_ty
+        success          = lv_success.
+    /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'ZPSYSG' ).
+
+    IF lv_success IS NOT INITIAL OR ls_who_l IS INITIAL.
+      EXIT.
+    ENDIF.
+
+    APPEND ls_who_l TO lt_filter_who.
+    APPEND ls_who_l TO ct_who_list.
+
+    CLEAR ls_display.
+    ls_display-lgnum = ls_who_l-lgnum.
+    ls_display-who   = ls_who_l-who.
+    APPEND ls_display TO ct_who_display.
+
+  ENDDO.
+
+ENDFORM.
 
 
+FORM find_first_workable_who
+  USING    is_resource   TYPE /scwm/s_rsrc
+           is_rsrc       TYPE /scwm/rsrc
+           iv_last_tx    TYPE /scwm/de_ltrans
+           iv_queue      TYPE /scwm/de_queue
+           it_who_list   TYPE /scwm/tt_who_int
+  CHANGING cs_resource   TYPE /scwm/s_rsrc
+           cs_who        TYPE /scwm/s_who_int
+           cs_ordim      TYPE /scwm/s_rf_ordim_confirm
+           ct_ordim      TYPE /scwm/tt_rf_ordim_confirm
+           ct_pick_hus   TYPE /scwm/tt_rf_pick_hus
+           cv_additional TYPE string.
 
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*
-*** need to check data and to define next step according to customizing
-*** Currently goes to introduce HU screen.
-**
-**  DATA: lv_state         TYPE /scwm/de_state,
-**        lv_fcode         TYPE /scwm/de_fcode,
-**        ls_wo_rsrc_ty    TYPE /scwm/wo_rsrc_ty,
-**        ls_trsrc_typ     TYPE /scwm/trsrc_typ,
-**        ls_who           TYPE /scwm/s_who_int,
-**        ls_whohu         TYPE /scwm/s_whohu,
-**        ls_rf_pick_hus   TYPE /scwm/s_rf_pick_hus,
-**        ls_ordim_o       TYPE /scwm/ordim_o,
-**        lt_wo_rsrc_ty    TYPE /scwm/tt_wo_rsrc_ty,
-**        lt_whohu         TYPE /scwm/tt_whohu_int,
-**        lt_ordim_o       TYPE /scwm/tt_ordim_o,
-**        ls_resource      TYPE /scwm/rsrc,
-**        lv_whoseq        TYPE /scwm/de_whoseq,
-**        ls_ordim_confirm TYPE /scwm/s_rf_ordim_confirm,
-**        ls_rsrc          TYPE /scwm/rsrc,
-**        lv_success       TYPE sysubrc,
-**        lv_last_tx       TYPE /scwm/de_ltrans,
-**        lv_lgpla         TYPE /scwm/de_rf_vlpla,
-**        lt_who           TYPE /scwm/tt_who_int,
-**        lt_filter_who    TYPE /scwm/tt_who_int,
-**        lv_queue         TYPE /scwm/de_queue.
-**
-**  DATA lt_wo_rsrc_ty_new  TYPE /scwm/tt_wo_rsrc_ty.
-**
-**  DATA  additional_txt    TYPE string.
-**  BREAK-POINT ID /scwm/rf_picking.
-*** initiating data
-**  CLEAR: ls_wo_rsrc_ty, ordim_confirm, ls_rf_pick_hus,
-**         ls_ordim_o, ls_whohu.
-**  REFRESH: lt_wo_rsrc_ty, tt_ordim_confirm, t_rf_pick_hus.
-**
-**  gv_pick_sort = gc_sort_ascending.
-**
-***   Get resource ID.
-**  MOVE-CORRESPONDING resource TO ls_resource.
-**  CALL FUNCTION '/SCWM/RSRC_RESOURCE_MEMORY'
-**    EXPORTING
-**      iv_uname = sy-uname
-**    CHANGING
-**      cs_rsrc  = ls_resource.
-**
-*** save the queue
-**  lv_last_tx = /scwm/cl_rf_bll_srvc=>get_last_ltrans( ).
-**  IF lv_last_tx = ltrans_work_by_queue.
-**    GET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD lv_queue.
-**  ENDIF.
-**
-*** update default queue of rsrc information from DB
-*** read resource to figure out whether the semi system guided processing
-*** is the current processing. If it is, then go to step SEMSYS (set FCode GTSEMT)
-**  CALL FUNCTION '/SCWM/RSRC_READ_SINGLE'
-**    EXPORTING
-**      iv_lgnum    = ls_resource-lgnum
-**      iv_rsrc     = ls_resource-rsrc
-**    IMPORTING
-**      es_rsrc     = ls_rsrc
-**    EXCEPTIONS
-**      wrong_input = 1
-**      not_found   = 2
-**      OTHERS      = 3.
-**  IF sy-subrc <> 0.
-**    "   To povide to enter a new queue name by sysem guided selection by queue
-**    "   see FM  /SCWM/RSRC_WKSYS_SEL_PBO
-**    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
-**    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
-**            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
-**  ENDIF.
-**
-**  MOVE-CORRESPONDING ls_rsrc TO resource.
-**
-**  CALL METHOD /scwm/cl_tm=>set_lgnum( ls_resource-lgnum ).
-**
-***   Set global variable for resource type position management.
-**  CALL FUNCTION '/SCWM/RSRC_TRSRC_TYP_READ'
-**    EXPORTING
-**      iv_lgnum     = resource-lgnum
-**      iv_rsrc_type = resource-rsrc_type
-**    IMPORTING
-**      es_trsrc_typ = ls_trsrc_typ
-**    EXCEPTIONS
-**      not_found    = 1
-**      OTHERS       = 2.
-**  IF sy-subrc <> 0.
-**    "   To povide to enter a new queue name by sysem guided selection by queue
-**    "   see FM  /SCWM/RSRC_WKSYS_SEL_PBO
-**    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
-**    MESSAGE e036 WITH resource-rsrc.
-**  ELSE.
-**    gv_postn_mngmnt = ls_trsrc_typ-postn_mngmnt.
-**  ENDIF.
-**
-**  MOVE-CORRESPONDING ls_rsrc TO resource.
-**
-**  CALL METHOD /scwm/cl_tm=>set_lgnum( ls_resource-lgnum ).
-**
-***   Set global variable for resource type position management.
-**  CALL FUNCTION '/SCWM/RSRC_TRSRC_TYP_READ'
-**    EXPORTING
-**      iv_lgnum     = resource-lgnum
-**      iv_rsrc_type = resource-rsrc_type
-**    IMPORTING
-**      es_trsrc_typ = ls_trsrc_typ
-**    EXCEPTIONS
-**      not_found    = 1
-**      OTHERS       = 2.
-**  IF sy-subrc <> 0.
-**    "   To povide to enter a new queue name by sysem guided selection by queue
-**    "   see FM  /SCWM/RSRC_WKSYS_SEL_PBO
-**    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
-**    MESSAGE e036 WITH resource-rsrc.
-**  ELSE.
-**    gv_postn_mngmnt = ls_trsrc_typ-postn_mngmnt.
-**  ENDIF.
-**
-*** We handle the situation, when the system guided part finds a blocked bin.
-*** We make maximum 10 retries, when one of the WT of the new WHO is blocked.
-*** The loop starts again, when the just created WHO also has blocked WT(s)
-**  CLEAR lt_filter_who.
-**  CLEAR additional_txt.
-**  DO 10 TIMES.
-**    CLEAR: tt_ordim_confirm, "to eliminate duplicate WTs
-**           t_rf_pick_hus,    " and pickHUs
-**           ordim_confirm,
-**           lt_wo_rsrc_ty.
-**
-***   In case of blocked bin (no exception used) we should skip the blocked WO
-***   If we are coming from the system guided by queue, then during the next WO selection
-***   we must simulate the selection by queue again, otherwise we are in full system guided mode
-**    IF lv_last_tx = ltrans_work_by_queue AND
-**       lt_filter_who IS NOT INITIAL. " <- we have a blocked bin
-**      ls_wo_rsrc_ty-lgnum = ls_resource-lgnum.
-**      ls_wo_rsrc_ty-queue = lv_queue.
-**      APPEND ls_wo_rsrc_ty TO lt_wo_rsrc_ty.
-**    ENDIF.
-**
-**    /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'PISYSG' ).
-**    CALL FUNCTION '/SCWM/RF_WHO_SELECT'
-**      EXPORTING
-**        iv_recfilt_mode  = 'X'   "The functionality is analog to "FM RSRC_WKBSYS_INITIAL in picking
-**        it_filter_who    = lt_filter_who
-**      CHANGING
-**        resource         = resource
-**        ordim_confirm    = ordim_confirm
-**        who              = who
-**        t_rf_pick_hus    = t_rf_pick_hus
-**        tt_ordim_confirm = tt_ordim_confirm
-**        ct_wo_rsrc_ty    = lt_wo_rsrc_ty
-**        success          = lv_success.
-**
-**    /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'ZPSYSG' ).
-**    IF lv_success IS NOT INITIAL.
-**      DATA(mo_skip_wo) = /scwm/cl_rf_pick_exc_skip_wo=>get_instance( iv_lgnum = resource-lgnum ).
-**      IF mo_skip_wo->get_all_wos_skipped( ) = abap_true."Special Case with skipped WO Exception Code
-**        "End Transaction, send error message
-**        /scwm/cl_rf_bll_srvc=>message(
-**          EXPORTING
-**            iv_flg_continue_flow = 'X'                 " Checkbox
-**            iv_msgid             = '/SCWM/RF_EN'
-**            iv_msgno             = '056'
-**        ).
-**        /scwm/cl_rf_bll_srvc=>set_fcode( /scwm/cl_rf_bll_srvc=>c_fcode_leave ).
-**        /scwm/cl_rf_bll_srvc=>set_prmod(
-**          EXPORTING
-**            iv_prmod    = /scwm/cl_rf_bll_srvc=>c_prmod_background
-**            iv_ovr_cust = 'X'
-**        ).
-**        RETURN.
-**      ENDIF.
-**
-**      "   To povide to enter a new queue name by sysem guided selection by queue
-**      "   see FM  /SCWM/RSRC_WKSYS_SEL_PBO
-**      SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
-**      MESSAGE e056.
-**
-**    ENDIF.
-**
-***   system guided mode updated back to the resource to behave correctly
-***   after network issue.
-**    IF lv_last_tx = ltrans_work_by_queue OR lv_last_tx = ltrans_work_by_system.
-***     Retrieve resource, in case it was changed meanwhile through monitor
-**      CALL FUNCTION '/SCWM/RSRC_READ_SINGLE'
-**        EXPORTING
-**          iv_lgnum    = ls_resource-lgnum
-**          iv_rsrc     = ls_resource-rsrc
-**        IMPORTING
-**          es_rsrc     = ls_rsrc
-**        EXCEPTIONS
-**          wrong_input = 1
-**          not_found   = 2
-**          OTHERS      = 3.
-**      IF sy-subrc <> 0.
-**        SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
-**        MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
-**                WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
-**      ENDIF.
-**
-**      ls_rsrc-ltrans = lv_last_tx.
-**      CALL FUNCTION '/SCWM/RSRC_RESOURCE_SET'
-**        EXPORTING
-**          iv_action = wmegc_update
-**          is_rsrc   = ls_rsrc.
-**
-**    ENDIF.
-**
-**    IF resource-semi_lgpla IS NOT INITIAL.
-**      /scwm/cl_rf_bll_srvc=>set_fcode( 'GTSEMI' ).
-**      CLEAR: ordim_confirm,
-**             tt_ordim_confirm.
-**      RETURN.
-**    ENDIF.
-**
-**
-**    /scwm/cl_rf_bll_srvc=>set_prmod('1').
-**
-**    "if we use asynchronous processing some preparations are required
-**    /scwm/cl_rf_confirm_picking=>get_instance( )->init_async_processing(
-**      CHANGING
-**        ct_ordim_confirm = tt_ordim_confirm ).
-***  /scwm/cl_rf_confirm_picking=>get_instance( )->init_async_processing( tt_ordim_confirm ).
-**
-**    READ TABLE tt_ordim_confirm INDEX 1 INTO ordim_confirm.
-**
-***   In case we have source TOs we delete Dest TOs except of Repl TOs.
-**    IF NOT ordim_confirm IS INITIAL.
-**      CLEAR lv_whoseq.
-**      LOOP AT tt_ordim_confirm INTO ls_ordim_confirm
-**        WHERE srsrc IS INITIAL.
-**        IF ls_ordim_confirm-whoseq > lv_whoseq.
-**          lv_whoseq = ls_ordim_confirm-whoseq.
-**        ENDIF.
-**      ENDLOOP.
-**      IF lv_whoseq > 0.
-**        DELETE tt_ordim_confirm
-**         WHERE lgnum = ordim_confirm-lgnum AND
-**               srsrc IS NOT INITIAL AND
-**               whoseq > lv_whoseq.
-**      ENDIF.
-**    ENDIF.
-**
-*** may happen that the previous logic delete the entry from
-*** TT_ORDIM_CONFIRM which is currently in ORDIM_CONFIRM.
-*** So ORDIM_CONFIRM refresh is mandatory.
-**    READ TABLE tt_ordim_confirm INDEX 1 INTO ordim_confirm.
-**
-**    DATA lv_wtnum_before_blkchk  TYPE sy-tabix.
-**
-**    DESCRIBE TABLE tt_ordim_confirm LINES lv_wtnum_before_blkchk.
-**
-**    CALL FUNCTION '/SCWM/RF_PICK_SRCBIN_BLOCK_CHK'
-**      EXPORTING
-**        iv_rsrc          = ls_rsrc-rsrc
-**      IMPORTING
-**        et_wo_rsrc_ty    = lt_wo_rsrc_ty_new
-**      CHANGING
-**        ct_ordim_confirm = tt_ordim_confirm
-**        cv_lgpla         = lv_lgpla.
-**
-**    IF lines( tt_ordim_confirm ) IS INITIAL.
-**
-**      IF lv_last_tx = ltrans_work_by_wo OR
-**         lv_last_tx = ltrans_work_by_hu.
-**        MESSAGE e263(/scwm/rf_de) WITH lv_lgpla.
-**      ENDIF.
-**
-***     No error message should be raised, just go for the next WO
-**      SET PARAMETER ID '/SCWM/WORK_WHO' FIELD space.
-**      additional_txt = 'Blocked bin(s) exist(s)'.
-*** Filter out this WO from the next round of WO selection.
-**      APPEND who TO lt_filter_who.
-**      CONTINUE.
-**    ENDIF.
-**
-**    IF lines( lt_wo_rsrc_ty_new )  IS NOT INITIAL.
-***    the original WHO was cancelled and the new WHO was created
-***    Only WHOs with status "open" should be taken into account
-***    At this stage is possible to optimize the order of WHO-processing
-**      PERFORM wo_rsrc_ty_update
-**        USING
-**          lt_wo_rsrc_ty
-**        CHANGING
-**          lt_wo_rsrc_ty_new
-**      .
-**
-**      CLEAR lt_wo_rsrc_ty.
-**      INSERT LINES OF lt_wo_rsrc_ty_new INTO TABLE lt_wo_rsrc_ty.
-**      CLEAR lt_wo_rsrc_ty_new.
-**    ELSE.
-**      IF lines( tt_ordim_confirm ) IS  NOT INITIAL.
-***      No all WT(s) of the WHO was (were) cancelled
-**        EXIT. "loop
-**      ELSEIF ( lv_wtnum_before_blkchk = 1 ). " 1 WT exists, but it is blocked
-**        EXIT.
-**      ENDIF.
-**    ENDIF.
-**  ENDDO.
-**
-**  IF tt_ordim_confirm IS NOT INITIAL.
-**    COMMIT WORK AND WAIT.
-**    CALL METHOD /scwm/cl_tm=>cleanup( ).
-**  ENDIF.
-*** All existing WTs (WHOs) were filtered out due blocked bin
-**
-**  IF lines( tt_ordim_confirm ) IS INITIAL.
-**    "  To povide to enter a new queue name by sysem guided selection by queue
-**    "  see FM  /SCWM/RSRC_WKSYS_SEL_PBO
-**    SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE'  FIELD space.
-**    MESSAGE e769 WITH additional_txt.
-**  ENDIF.
-**
-*** Fill container for application specific verification
-**  CALL FUNCTION '/SCWM/RF_FILL_WME_VERIF'
-**    EXPORTING
-**      iv_lgnum     = ordim_confirm-lgnum
-**      iv_procty    = ordim_confirm-procty
-**      iv_trart     = ordim_confirm-trart
-**      iv_act_type  = ordim_confirm-act_type
-**      iv_aarea     = ordim_confirm-aarea
-**    IMPORTING
-**      es_wme_verif = wme_verif.
-**
-**  CALL FUNCTION '/SCWM/RF_PICK_SET_STATE'
-**    CHANGING
-**      resource      = resource
-**      ordim_confirm = ordim_confirm.
-**
-**  CALL FUNCTION 'Z_EWM_RF_PICK_SET_FCODE'
-***  CALL FUNCTION '/SCWM/RF_PICK_SET_FCODE'
-**    CHANGING
-**      resource         = resource
-**      ordim_confirm    = ordim_confirm
-**      tt_ordim_confirm = tt_ordim_confirm.
-**
-**
-**ENDFUNCTION.
+  DATA: lt_filter_who    TYPE /scwm/tt_who_int,
+        lt_wo_rsrc_ty    TYPE /scwm/tt_wo_rsrc_ty,
+        lt_wo_rsrc_ty_nw TYPE /scwm/tt_wo_rsrc_ty,
+        ls_wo_rsrc_ty    TYPE /scwm/wo_rsrc_ty,
+        ls_ordim_confirm TYPE /scwm/s_rf_ordim_confirm,
+        ls_rsrc          TYPE /scwm/rsrc,
+        lv_success       TYPE sysubrc,
+        lv_whoseq        TYPE /scwm/de_whoseq,
+        lv_lgpla         TYPE /scwm/de_rf_vlpla,
+        lv_wtnum_before  TYPE sy-tabix.
+
+* Filter: të gjitha WHO-t përveç asaj të zgjedhur
+  lt_filter_who = it_who_list.
+  DELETE lt_filter_who WHERE who = cs_who-who.
+
+  DO.
+    CLEAR: ct_ordim,         ct_pick_hus,
+           cs_ordim,         lt_wo_rsrc_ty,
+           lt_wo_rsrc_ty_nw, lv_lgpla.
+
+    IF iv_last_tx = ltrans_work_by_queue AND
+       lt_filter_who IS NOT INITIAL.
+      ls_wo_rsrc_ty-lgnum = is_rsrc-lgnum.
+      ls_wo_rsrc_ty-queue = iv_queue.
+      APPEND ls_wo_rsrc_ty TO lt_wo_rsrc_ty.
+    ENDIF.
+
+    /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'PISYSG' ).
+    CALL FUNCTION '/SCWM/RF_WHO_SELECT'
+      EXPORTING
+        iv_recfilt_mode  = 'X'
+        it_filter_who    = lt_filter_who
+      CHANGING
+        resource         = cs_resource
+        ordim_confirm    = cs_ordim
+        who              = cs_who
+        t_rf_pick_hus    = ct_pick_hus
+        tt_ordim_confirm = ct_ordim
+        ct_wo_rsrc_ty    = lt_wo_rsrc_ty
+        success          = lv_success.
+    /scwm/cl_rf_bll_srvc=>set_ltrans_simu( 'ZPSYSG' ).
+
+    IF lv_success IS NOT INITIAL.
+      DATA(mo_skip_wo) = /scwm/cl_rf_pick_exc_skip_wo=>get_instance(
+                           iv_lgnum = is_resource-lgnum ).
+      IF mo_skip_wo->get_all_wos_skipped( ) = abap_true.
+        /scwm/cl_rf_bll_srvc=>message(
+          EXPORTING
+            iv_flg_continue_flow = 'X'
+            iv_msgid             = '/SCWM/RF_EN'
+            iv_msgno             = '056' ).
+        /scwm/cl_rf_bll_srvc=>set_fcode( /scwm/cl_rf_bll_srvc=>c_fcode_leave ).
+        /scwm/cl_rf_bll_srvc=>set_prmod(
+          EXPORTING
+            iv_prmod    = /scwm/cl_rf_bll_srvc=>c_prmod_background
+            iv_ovr_cust = 'X' ).
+        RETURN.
+      ENDIF.
+      SET PARAMETER ID '/SCWM/WKSYSQ_QUEUE' FIELD space.
+      MESSAGE e056.
+    ENDIF.
+
+    IF iv_last_tx = ltrans_work_by_queue OR
+       iv_last_tx = ltrans_work_by_system.
+      CALL FUNCTION '/SCWM/RSRC_READ_SINGLE'
+        EXPORTING
+          iv_lgnum    = is_rsrc-lgnum
+          iv_rsrc     = is_rsrc-rsrc
+        IMPORTING
+          es_rsrc     = ls_rsrc
+        EXCEPTIONS
+          wrong_input = 1
+          not_found   = 2
+          OTHERS      = 3.
+      IF sy-subrc = 0.
+        ls_rsrc-ltrans = iv_last_tx.
+        CALL FUNCTION '/SCWM/RSRC_RESOURCE_SET'
+          EXPORTING
+            iv_action = wmegc_update
+            is_rsrc   = ls_rsrc.
+      ENDIF.
+    ENDIF.
+
+    IF cs_resource-semi_lgpla IS NOT INITIAL.
+      /scwm/cl_rf_bll_srvc=>set_fcode( 'GTSEMI' ).
+      CLEAR: cs_ordim, ct_ordim.
+      RETURN.
+    ENDIF.
+
+    /scwm/cl_rf_bll_srvc=>set_prmod( '1' ).
+
+    /scwm/cl_rf_confirm_picking=>get_instance( )->init_async_processing(
+      CHANGING ct_ordim_confirm = ct_ordim ).
+
+    READ TABLE ct_ordim INDEX 1 INTO cs_ordim.
+
+    IF cs_ordim IS NOT INITIAL.
+      CLEAR lv_whoseq.
+      LOOP AT ct_ordim INTO ls_ordim_confirm WHERE srsrc IS INITIAL.
+        IF ls_ordim_confirm-whoseq > lv_whoseq.
+          lv_whoseq = ls_ordim_confirm-whoseq.
+        ENDIF.
+      ENDLOOP.
+      IF lv_whoseq > 0.
+        DELETE ct_ordim
+          WHERE lgnum  = cs_ordim-lgnum AND
+                srsrc  IS NOT INITIAL   AND
+                whoseq > lv_whoseq.
+      ENDIF.
+    ENDIF.
+
+    READ TABLE ct_ordim INDEX 1 INTO cs_ordim.
+    DESCRIBE TABLE ct_ordim LINES lv_wtnum_before.
+
+    CALL FUNCTION '/SCWM/RF_PICK_SRCBIN_BLOCK_CHK'
+      EXPORTING
+        iv_rsrc          = is_rsrc-rsrc
+      IMPORTING
+        et_wo_rsrc_ty    = lt_wo_rsrc_ty_nw
+      CHANGING
+        ct_ordim_confirm = ct_ordim
+        cv_lgpla         = lv_lgpla.
+
+    IF ct_ordim IS INITIAL.
+      IF iv_last_tx = ltrans_work_by_wo OR
+         iv_last_tx = ltrans_work_by_hu.
+        MESSAGE e263(/scwm/rf_de) WITH lv_lgpla.
+      ENDIF.
+      SET PARAMETER ID '/SCWM/WORK_WHO' FIELD space.
+      cv_additional = 'Blocked bin(s) exist(s)'.
+      APPEND cs_who TO lt_filter_who.
+      CONTINUE.
+    ENDIF.
+
+    IF lt_wo_rsrc_ty_nw IS NOT INITIAL.
+      PERFORM wo_rsrc_ty_update
+        USING    lt_wo_rsrc_ty
+        CHANGING lt_wo_rsrc_ty_nw.
+      CLEAR lt_wo_rsrc_ty.
+      INSERT LINES OF lt_wo_rsrc_ty_nw INTO TABLE lt_wo_rsrc_ty.
+      CLEAR lt_wo_rsrc_ty_nw.
+    ELSE.
+      IF ct_ordim IS NOT INITIAL OR lv_wtnum_before = 1.
+        EXIT.
+      ENDIF.
+    ENDIF.
+
+  ENDDO.
+
+ENDFORM.
+
